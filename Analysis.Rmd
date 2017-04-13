@@ -164,7 +164,7 @@ plot_grid({
     expand_limits(y = 0)
   },{
    Participants %>% 
-    ggplot(aes(x = Condition, y = MT.ms., color = Block)) +
+    ggplot(aes(x = Condition, y = MT.ms., color = Participant)) +
     geom_beeswarm() + 
     ylab("") +
     expand_limits(y = 0) +
