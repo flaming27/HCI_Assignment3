@@ -1,5 +1,5 @@
 ---
-title: "Categorical independent variable with interactions"
+title: "Assignment 3: Analysis of pointing methods"
 output:
   pdf_document: default
   html_notebook:
@@ -112,13 +112,15 @@ Participant1 <- load_data("Participant1")
 
 Participant2 <- load_data("Participant2")
 
+Participant3 <- load_data("Participant3")
+
 Participant7 <- load_data("Participant7")
 
 Participant8 <- load_data("Participant8")
 
 Participant9 <- load_data("Participant9")
 
-Participants <- bind_rows(Participant1, Participant2, Participant7, Participant8, Participant9)
+Participants <- bind_rows(Participant1, Participant2, Participant3, Participant7, Participant8, Participant9)
 
 Participants
 
@@ -126,8 +128,7 @@ Participants
 
 ```{r}
 # ensure that independent variables are factors (essential for glht())
-data1$Device <- as.factor(data1$Device)
-data1$Vision <- as.factor(data1$Vision)
+Participants$Condition <- as.factor(Participants$Condition)
 ```
 
 Plotting beeswarm of the data points and the mean time:
@@ -174,7 +175,7 @@ plot_grid({
 **Interpretation:** The plot on the right shows the mean and 95% confidence interval of each group. There seems to be an overall effect of `Device`: knob seems to be slower than touch. As for `Vision`, there seems to be an effect: eyes-on condition is fastest, follow by the peripheral condition, and the eyes-free condition is slowest. The slope of the three lines seems to differ, suggesting an interaction between `Device` and `Vision`.
 
 
-Plotting beeswarm of the data points and the mean time:
+Plotting mean time for each condition, grouped by participant:
 
 ```{r}
 pd <- position_dodge(0.3) # ensure no overlaps
@@ -188,10 +189,20 @@ pd <- position_dodge(0.3) # ensure no overlaps
     expand_limits(y = 0)
 
 ```
+As one can see in the above plot, extreme outliers have a significant impact on both the participant and overall (group) results for participant 8 (C04), and to a lesser degree participant 9 (C03). 
 
+Plotting effects of amplitude and width on mean time, grouped by participant
 ```{r}
 pd <- position_dodge(0.3) # ensure no overlaps
 
+plot_grid({ 
+  Participants %>% 
+    ggplot(aes(x = A, y = MT.ms., color = Participant)) +
+    geom_beeswarm() + 
+    ylab("Mean time (ms)") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none")
+  },{
   Participants %>% 
     ggplot(aes(x = A, y = MT.ms., color = Participant, group = Participant)) +
     stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
@@ -199,12 +210,68 @@ pd <- position_dodge(0.3) # ensure no overlaps
     stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0, position = pd) + 
     ylab("Mean(Time) and 95% CI") +
     expand_limits(y = 0)
-
-
-
-
+  },{
+   Participants %>% 
+    ggplot(aes(x = W, y = MT.ms., color = Participant)) +
+    geom_beeswarm() + 
+    ylab("Mean time (ms)") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none")
+  },{
+  Participants %>% 
+    ggplot(aes(x = W, y = MT.ms., color = Participant, group = Participant)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0, position = pd) + 
+    ylab("Mean(Time) and 95% CI") +
+    expand_limits(y = 0)
+  }, 
+  nrow = 2)
 
 ```
+Plotting effects of amplitude and width on mean time, grouped by block
+```{r}
+pd <- position_dodge(0.3) # ensure no overlaps
+
+plot_grid({ 
+  Participants %>% 
+    ggplot(aes(x = A, y = MT.ms., color = Block)) +
+    geom_beeswarm() + 
+    ylab("Mean time (ms)") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none")
+  },{
+  Participants %>% 
+    ggplot(aes(x = A, y = MT.ms., color = Block, group = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0, position = pd) + 
+    ylab("Mean(Time) and 95% CI") +
+    expand_limits(y = 0)
+  },{
+   Participants %>% 
+    ggplot(aes(x = W, y = MT.ms., color = Block)) +
+    geom_beeswarm() + 
+    ylab("Mean time (ms)") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none")
+  },{
+  Participants %>% 
+    ggplot(aes(x = W, y = MT.ms., color = Block, group = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0, position = pd) + 
+    ylab("Mean(Time) and 95% CI") +
+    expand_limits(y = 0)
+  }, 
+  nrow = 2)
+
+```
+
+
+
+
+
 # Data and exploratory plot
 The interaction effect is coded by multiplying regressors. Notice the comparison between the two model matrices below. On the left matrix, no interaction effect is coded. Thus, we have four regressors: one intercept, one regressor for `Device`, two regressors for  `Vision`. On the right matrix, two regressors are added to encode the interactions between `Device` and `Vision`. They are the result of multiplication between the second regressor and the third (and fourth respectively).
 
