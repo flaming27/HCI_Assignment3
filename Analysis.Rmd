@@ -115,10 +115,13 @@ Participant2 <- load_data("Participant2")
 Participant3 <- load_data("Participant3")
 
 Participant7 <- load_data("Participant7")
+Participant7$Participant = "P7"
 
 Participant8 <- load_data("Participant8")
+Participant8$Participant = "P8"
 
 Participant9 <- load_data("Participant9")
+Participant9$Participant = "P9"
 
 Participants <- bind_rows(Participant1, Participant2, Participant3, Participant7, Participant8, Participant9)
 
@@ -178,7 +181,7 @@ plot_grid({
 Plotting mean time for each condition, grouped by participant:
 
 ```{r}
-pd <- position_dodge(0.3) # ensure no overlaps
+pd <- position_dodge(0.2) # ensure no overlaps
 
   Participants %>% 
     ggplot(aes(x = Condition, y = MT.ms., color = Participant, group = Participant)) +
@@ -190,6 +193,8 @@ pd <- position_dodge(0.3) # ensure no overlaps
 
 ```
 As one can see in the above plot, extreme outliers have a significant impact on both the participant and overall (group) results for participant 8 (C04), and to a lesser degree participant 9 (C03). 
+
+C01 (laptop) is fastest for all participants, and in general C03 (two-handed) was faster than C02 (one-handed). However, results for C04 (sway) varied significantly between participants. 
 
 Plotting effects of amplitude and width on mean time, grouped by participant
 ```{r}
@@ -269,8 +274,83 @@ plot_grid({
 ```
 
 
+# Removing extreme outliers (2) and retesting
 
+```{r}
 
+Participants <- filter(Participants, MT.ms. <= 6000)
+
+plot_grid({ 
+  Participants %>% 
+    ggplot(aes(x = A, y = MT.ms., color = Participant)) +
+    geom_beeswarm() + 
+    ylab("Mean time (ms)") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none")
+  },{
+  Participants %>% 
+    ggplot(aes(x = A, y = MT.ms., color = Participant, group = Participant)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0, position = pd) + 
+    ylab("Mean(Time) and 95% CI") +
+    expand_limits(y = 0)
+  },{
+   Participants %>% 
+    ggplot(aes(x = W, y = MT.ms., color = Participant)) +
+    geom_beeswarm() + 
+    ylab("Mean time (ms)") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none")
+  },{
+  Participants %>% 
+    ggplot(aes(x = W, y = MT.ms., color = Participant, group = Participant)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0, position = pd) + 
+    ylab("Mean(Time) and 95% CI") +
+    expand_limits(y = 0)
+  }, 
+  nrow = 2)
+
+```
+```{r}
+pd <- position_dodge(0.3) # ensure no overlaps
+
+plot_grid({ 
+  Participants %>% 
+    ggplot(aes(x = A, y = MT.ms., color = Block)) +
+    geom_beeswarm() + 
+    ylab("Mean time (ms)") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none")
+  },{
+  Participants %>% 
+    ggplot(aes(x = A, y = MT.ms., color = Block, group = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0, position = pd) + 
+    ylab("Mean(Time) and 95% CI") +
+    expand_limits(y = 0)
+  },{
+   Participants %>% 
+    ggplot(aes(x = W, y = MT.ms., color = Block)) +
+    geom_beeswarm() + 
+    ylab("Mean time (ms)") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none")
+  },{
+  Participants %>% 
+    ggplot(aes(x = W, y = MT.ms., color = Block, group = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0, position = pd) + 
+    ylab("Mean(Time) and 95% CI") +
+    expand_limits(y = 0)
+  }, 
+  nrow = 2)
+
+```
 
 # Data and exploratory plot
 The interaction effect is coded by multiplying regressors. Notice the comparison between the two model matrices below. On the left matrix, no interaction effect is coded. Thus, we have four regressors: one intercept, one regressor for `Device`, two regressors for  `Vision`. On the right matrix, two regressors are added to encode the interactions between `Device` and `Vision`. They are the result of multiplication between the second regressor and the third (and fourth respectively).
@@ -288,164 +368,10 @@ m1 <- lm(MT.ms. ~ Condition, data = Participants)
 summary(m1)
 anova(m1)
 ```
-
-**Interpretation:** Both independent variables have statistically significant effect on the `Time`. The interaction effect is also statistically significant. Therefore, we will follow this up with mean comparisions. Again, we can do this in either: multiple comparisons or planned contrast. We first do the comparison of the main effect before comparing the interaction.
-
-# Main effects
-
-Main effect comparison can be done by removing the interaction term from the model. We can do pairwise comparisions with the code below:
 ```{r}
-m1.main <-  update(m1, .~. - Vision:Device)   # This is the updated model
-m1.main.pairwise <- glht(m1.main,
-  linfct = mcp(
-    Device = "Tukey",
-    Vision = "Tukey"))
-```
-
-
-We can plot the comparisons with the 95% confidence interval. These intervals are adjusted according to the multiple hypotheses that we tested to ensure that we have 5% probabilty for Type I error in this set of comparisons.
-```{r}
-# a helper function to plot the results from multiple comparison
-plotMc <- function(mc.result)
-{
-  mc.result %>% 
-    confint() %>% 
-    tidy() %>% 
-    ggplot(aes(x = paste(lhs, "==", rhs))) +
-    geom_hline(yintercept = 0, color = "red") +     # reference line
-    geom_point(aes(y = estimate)) +                  # point estimate of the difference
-    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) + # 95% CI of the difference
-    expand_limits(y = 0) +
-    coord_flip() +
-    xlab("Hypothesis") +
-    ylab("Estimate of the difference")
-}
-
-
-m1.main.pairwise %>% 
-  plotMc() + 
-  expand_limits(y = c(-3, 1.5))  # for consistency with plots below
-```
-
-Alternatively, we usually prefer planned contrasts. Suppose we have planned the following null hypotheses:
-
-* \\(H_{0, 1}\\): EyesOn - "Peripheral and EyesFree combined" == 0
-* \\(H_{0, 2}\\): Peripheral - EyesFree == 0
-* \\(H_{0, 3}\\): Knob - Touch == 0
-
-We can check these hypotheses below:
-```{r}
-m1.planned.mc <- glht(m1.main,
-  linfct = mcp(
-    Vision = c(
-      "EyesOn - (Peripheral + EyesFree) == 0",
-      "Peripheral - EyesFree == 0"
-      ),
-    Device = "Knob - Touch == 0")) 
-
-m1.planned.mc %>% 
-  plotMc() + 
-  expand_limits(y = c(-3, 1.5))
-
-planned.ci <- tidy(confint(m1.planned.mc))
-```
-
-**Interpretation:** For `Devices` the knob condition was slower than the touch condition by `r planned.ci[3, "estimate"]`, 95% CI: [`r planned.ci[3, "conf.low"]`, `r planned.ci[3, "conf.high"]`]. As for `Vision`, the comparisons are shown in the graph above. Looking at the uer interface (eyes-on) is faster than not looking (peripheral and eyes free). Having peripheral vision seems to also be faster than completely eyes-free.
-
-
-
-
-# Interaction
-
-## Multiple comparisions
-We compare between the three levels of `Vision` variable with Tukey method within each device. (Six hypotheses: three for `Touch`, three for `Knob`) Unfortunately, this is not automatic. We first need to create a model with only the interaction term. Then, we construct contrast matrix manually.
-```{r}
-# model with only the interaction term
-m1.interaction <- update(m1, .~. -Vision - Device -1)
-summary(m1.interaction)  
-```
-
-In this model, each coefficient estimate corresponds to the mean of each sub-group. Note that the F-statistic, degrees of freedom, and R-squared differ from the original model `m1` above. We don't use these statistics.
-
-Notice that in the original `m1`, we use `Vision * Device`. The same model can be fit with `Device * Vision`, however, we choose this sequence to make it easy to specify contrast matrix below.
-
-Next, we construct the contrast matrix. Each *row* of coefficients in the linear model above correspond to a *column* in the contrast matrix. Each row of the contrast matrix expresses one hypothesis.
-
-1. We generate Tukey contrast matrix for the `Vision` variable.
-
-```{r}
-visionContr <- contrMat(table(data1$Vision), "Tukey")
-visionContr
-```
-
-2. We extend this matrix with zeros for the coefficients that we aren't interested in each hypothesis. We also set the row names to be meaningful. This will help reading the results later
-```{r}
-vTouch <- cbind(visionContr,       (visionContr * 0)) # building left side of matrix
-vKnob  <- cbind((visionContr * 0), visionContr) # building right side of matrix (identical but shifted from vTouch)
-rownames(vTouch) <- paste(levels(data1$Device)[1],  rownames(vTouch), sep =": ")
-rownames(vKnob)  <- paste(levels(data1$Device)[2],  rownames(vKnob),  sep =": ")
-visionContrastByDevice <- rbind(
-  vTouch,
-  vKnob
-)
-visionContrastByDevice
-```
-
-We can now run the multiple comparison:
-
-```{r}
-m1.interaction.mc <- glht(m1.interaction, linfct = visionContrastByDevice)  # notice that we don't use mcp()
-
-m1.interaction.mc %>% plotMc()
-```
-
-**Interpretation:** The differences among the three levels of `Vision` seems to be consistent between the two devices. The interaction effect seems to shifts the results of contrasts in the knob condition to be higher than those in the touch condition. This can be explained by the main effect above.
-
-
-## Planned contrast
-We can construct the planned contrast matrix in a similar way (manually), and use the same interaction-only model. Suppose we wishes to test two hypotheses for each device (in total: four hypotheses):
-
-* \\(H_{0, 1}\\): EyesOn - "Peripheral and EyesFree combined" == 0
-* \\(H_{0, 2}\\): Peripheral - EyesFree == 0
-
-Notice how the signs in the matrix below corresponds with the signs in the hypotheses. The column names matches the levels of the first variables in the interaction:
-
-```{r}
-m1.interaction$xlevels$Vision
-```
-
-```{r}
-visionContr <- matrix(byrow = TRUE, nrow = 2,
-  data = c(
-    -1, -1, 2,
-    -1, 1, 0),
-  dimnames = list(c(
-      # row names: hypotheses (only the left-hand-side)
-      "EyesOn - (Peripheral + EyesFree)",
-      "Peripheral - EyesFree"
-    ),
-    c(
-      # column names: the levels of the first variable of the interaction
-      m1.interaction$xlevels$Vision
-    )))
-  
-visionContr
-```
-The rest is the same as above
-```{r}
-vTouch <- cbind(visionContr,       (visionContr * 0))
-vKnob  <- cbind((visionContr * 0), visionContr)
-rownames(vTouch) <- paste(levels(data1$Device)[1],  rownames(vTouch), sep =": ")
-rownames(vKnob)  <- paste(levels(data1$Device)[2],  rownames(vKnob),  sep =": ")
-visionContrastByDevice <- rbind(
-  vTouch,
-  vKnob
-)
-visionContrastByDevice
-
-m1.interaction.mc <- glht(m1.interaction, linfct = visionContrastByDevice)  # notice that we don't use mcp()
-
-m1.interaction.mc %>%plotMc()
+m2 <- lm(MT.ms. ~ W, data = Participants)
+summary(m2)
+anova(m2)
 ```
 
 
