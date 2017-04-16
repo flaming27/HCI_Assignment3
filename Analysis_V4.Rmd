@@ -266,7 +266,6 @@ In general the second block is nearly on or contained within the confidence inte
 
 # Plotting the mean error (by blocks, by participant):
 ```{r}
-pd <- position_dodge(0.3) # ensure no overlaps
 
 plot_grid(
   # By blocks
@@ -297,7 +296,7 @@ plot_grid(
   },
   nrow = 1)
 ```
-
+Mean error does not appear to be significantly affected by block. However, participant 9 in particular had more difficulty on average than other participants.
 
 # Plotting jitter and mean error percentage:
 ```{r}
@@ -310,7 +309,7 @@ plot_grid(
     geom_jitter() + 
     ylab("Mean error %")+
     expand_limits(y = 0) +
-    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
     scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },{
   Participants %>% 
@@ -326,6 +325,66 @@ plot_grid(
   nrow = 1)
 ```
 As is most clear in the jitter, the majority of sequences involved 0 errors. With the 95% CI error bars it can be seen the one-handed touch (C02) and the sway (C04) are both generating more errors than the laptop trackpad baseline condition. Two-handed touch appears to be slightly higher in errors than the laptop condition, but not necessarily significantly. 
+
+# Plotting various additional accuracy measures:
+Now we look at the four different accuracy measures FittsTwo offers: Error percentage, movement direction change, orthogonal direction change, and movement error. 
+```{r}
+
+
+  # Standard 
+
+p1 <-  Participants %>% 
+    ggplot(aes(x = Condition, y = ER..., color = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    xlab("") +
+    ylab("ER %") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+  # MDC
+
+p2<-  Participants %>% 
+    ggplot(aes(x = Condition, y = MDC, color = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    xlab("") +
+    ylab("MDC") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+  # ODC
+
+p3<-  Participants %>% 
+    ggplot(aes(x = Condition, y = ODC, color = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    xlab("") +
+    ylab("ODC") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+  # ME
+
+p4<-  Participants %>% 
+    ggplot(aes(x = Condition, y = MV, color = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    xlab("") +
+    ylab("ME") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+legend <- get_legend(p1 + theme(legend.position="bottom"))
+ grid <- plot_grid(p1, p2, p3, p4, nrow = 2)
+ plot_grid(grid, legend, ncol = 1, rel_heights = c(1, .1))
+```
+With the exception of ME (mean error) which shows an inflated value for 1-handed touch, the error/accuracy measures have very similar relative distribution across conditions. For blocks all four accuracy measures show fairly tight groupings relative to condition. 
+
 
 # PART I Analysis: Linear model_1 (with throughput as independent variable)
 ```{r}
