@@ -394,7 +394,7 @@ In the above model the baseline condition (C01: laptop) is being treated as the 
   coord_flip() +
   xlab("Hypothesis") +
   ylab("Estimate of the difference") 
-  summary(m1.contrast)
+    summary(m1.contrast)
 ```
 
 **Interpretation:** Recall: the nearer to the zero, the more valid is the hypothesis 
@@ -442,6 +442,9 @@ print(anova_result)
 
 #Multiple linear regression based on the AIC results
 ```{r}
+#  ensure data type for modelling
+Participants$Condition <- as.factor(Participants$Condition)
+
 m2 <- lm(TP.bps. ~ Condition + MT.ms. + TRE + MDC + ODC + ME, data= Participants)
 
 summary(m2)
@@ -481,13 +484,5 @@ plot (m2)
 ```
 
 
-```{r}
-m2.main <-  update(m2, .~. )   # This is the updated model
-m2.main.pairwise <- glht(m2.main,
-  linfct = mcp(
-    Condition = "Tukey"))
-
-print(m2.main.pairwise)
-m2.main.pairwise %>% plot(m2)
-```
+**Interpretation** TO DO depending on the model chosen
 
