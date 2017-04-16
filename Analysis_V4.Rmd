@@ -114,17 +114,17 @@ load_data <- function(path) {
   bind_rows(tables)
 }
 
-Participant1 <- load_data("Participant1")
+Participant1 <- load_data("raw data\\Participant1")
 
-Participant2 <- load_data("Participant2")
+Participant2 <- load_data("raw data\\Participant2")
 
-Participant3 <- load_data("Participant3")
+Participant3 <- load_data("raw data\\Participant3")
 
-Participant7 <- load_data("Participant7")
+Participant7 <- load_data("raw data\\Participant7")
 
-Participant8 <- load_data("Participant8")
+Participant8 <- load_data("raw data\\Participant8")
 
-Participant9 <- load_data("Participant9")
+Participant9 <- load_data("raw data\\Participant9")
 
 Participants_raw <- bind_rows(Participant1, Participant2, Participant3, Participant7, Participant8, Participant9)
 
@@ -392,9 +392,10 @@ legend <- get_legend(p1 + theme(legend.position="bottom"))
  plot_grid(grid, legend, ncol = 1, rel_heights = c(1, .1))
 ```
 
-With the exception of ME (mean error) which shows an inflated value for 1-handed touch, the error/accuracy measures have very similar relative distribution across conditions. For blocks all four accuracy measures show fairly tight groupings relative to condition. 
+With the exception of ME (mean error) which shows an inflated value for 1-handed touch, the error/accuracy measures have very similar relative distribution across conditions. We will look into this further in the linear model building. For blocks all four accuracy measures show fairly tight groupings relative to condition. 
 
 # Actual Numbers: 
+
 
 Throughput (bps):
 
@@ -406,6 +407,7 @@ Two-handed: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C03"], na.
 
 Sway: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C04"], na.rm = FALSE))`, SD=`r (sd(Participants$TP.bps.[Participants$Condition=="C04"], na.rm = FALSE))`)
 
+
 Mean Time (in ms): 
 
 Laptop: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C01"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C01"], na.rm = FALSE))`)
@@ -415,6 +417,7 @@ One-handed: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C02"], na.r
 Two-handed: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C03"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C03"], na.rm = FALSE))`)
 
 Sway: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C04"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C04"], na.rm = FALSE))`)
+
 
 Error (percentage): 
 
@@ -431,16 +434,22 @@ Sway: (M=`r (mean(Participants$ER...[Participants$Condition=="C04"], na.rm = FAL
 ```{r}
 m1 <- lm( TP.bps. ~ Condition, data = Participants)
 summary(m1)
-plot(m1, col=as.factor(Participants$Condition))
 anova(m1)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m1, col=as.factor(Participants$Condition))
 ```
+
 # adding a model for displaying effects of outlier removal
-Based on the large deviation at the "tail" of the Q-Q plot we decided to try eliminating the "suspiciously low" throughput outliers and based model_1a on this. This was purely for experimental purposes to see if the difference was such that it would be worth sacrificing some questionable data in the interest of revealing a more realistic distribution. 
+
+Based on the large deviation at the "tail" of the Q-Q plot we decided to try eliminating the "suspiciously low" throughput outliers and based model_1a on this. This was purely for experimental purposes to see if the difference was such that it would be worth sacrificing some questionable data in the interest of revealing a more realistic distribution.
+
 ```{r}
 m1a <- lm( TP.bps. ~ Condition, data = Participants[Participants$TP.bps.>=0.7,])
 summary(m1a)
-plot(m1a, col=as.factor(Participants$Condition))
 anova(m1a)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m1a, col=as.factor(Participants$Condition))
+
 ```
 
 By comparing the models 1 and 1a we can see that removal provides an improved fit (Normal Q-Q). We found that it does in fact provide a higher R-squared while maintaining the same level of significance. 
@@ -452,7 +461,6 @@ p-value maintained at 2.2e-16
 
 ```{r}
 m1$coefficients
-m1a$coefficients
 ```
 
 # Plotting the results of the linear model_1, and the experimental model_1a (lower outliers removed)
@@ -515,12 +523,13 @@ Participants[Participants$TP.bps.>=0.7,] %>%
   
 
 ```
+
 In the above model the baseline condition (C01: laptop) is being treated as the y-intercept, since the conditions are treated as levels. The residuals are the coefficient (offset) for each condition from the baseline condition. Two-handed touch is closest (has the smallest residual) to the baseline condition. 
 
 
 # Hypotheses and planned contrast regarding throughput
-* \\(H_1\\): Mobile phone based “remote mouses” have a higher throughput than laptop based touchpads. (C02+C03+C04)-C01=0
-* \\(H_3.2\\): Mobile phone based “remote mouses” have a higher throughput when using two-handed pointing method compared to one-handed pointing method. C03-C02=0
+* \\(H_1\\): Mobile phone based "remote mouses" have a higher throughput than laptop based touchpads. (C02+C03+C04)-C01=0
+* \\(H_3.2\\): Mobile phone based "remote mouses" have a higher throughput when using two-handed pointing method compared to one-handed pointing method. C03-C02=0
 
 
 ```{r}
@@ -533,6 +542,7 @@ In the above model the baseline condition (C01: laptop) is being treated as the 
   confint() %>%
   tidy() %>%
   ggplot(aes(x = paste(lhs, "==", rhs))) +
+  ggtitle("Linear Model 1") +
   geom_hline(yintercept = 0, color = "red") +
   geom_point(aes(y = estimate)) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) +
@@ -551,6 +561,7 @@ In the above model the baseline condition (C01: laptop) is being treated as the 
   confint() %>%
   tidy() %>%
   ggplot(aes(x = paste(lhs, "==", rhs))) +
+  ggtitle("Linear Model 1a (w/o outliers)") +
   geom_hline(yintercept = 0, color = "red") +
   geom_point(aes(y = estimate)) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) +
@@ -568,7 +579,7 @@ REJECTED
 H_3.2) The estimate of the difference between two-handed pointing method and one-handed pointing method on the mobile phone is close to zero (+0.22). The throughput in two-handed method is only minimally larger, and yet it is significant (as the standard error is so low at 0.08, and the P value is < 0.01). Therefore, even such a small difference we accept as support of the hypothesis. 
 ACCEPTED
 
-With the added model_1a, we see that both hypotheses have estimates closer to 0. However, for the purposes of this study we will use the results from the full test group (all sequences from all participants - model_1), as that was mentioned in our protocols as a goal and the results (at least for TP) are similar. 
+With the added model_1a, we see that both hypotheses have estimates closer to 0. However, for the purposes of this study we will use the results from the full test group (all sequences from all participants - "Model 1"), as that was mentioned in our protocols as a goal and the results (at least for TP) are similar. 
 
 
 
@@ -603,20 +614,83 @@ print(anova_result)
 ```
 
 
-**Interpretation:** Throughput is an accepted measure — now endorsed in an ISO standard (MacKenzie et al (2001), p. 14). It has two core components: (a) speed, represented by movement time and (b) accuracy, represented by 7 accuracy measures, mentioned above. Results from model comparison still retain MT(movement time) as one of the core components emphasize 3 from 7 accuracy measures:   `MDC`(Movement direction change), `ODC`(Orthogonal direction change) and `ME`(Movement error), which have the greatest impact on the linear model and result in the lowest AIC score based on our experiment data. Therefore in the further analysis we will concentrate on this 3 accuracy measures to explain the differences between the conditions.
+**Interpretation:** Throughput is an accepted measure now endorsed in an ISO standard (MacKenzie et al (2001), p. 14). It has two core components: (a) speed, represented by movement time and (b) accuracy, represented by 7 accuracy measures, mentioned above. Results from model comparison still retain MT(movement time) as one of the core components emphasize 3 from 7 accuracy measures:   `MDC`(Movement direction change), `ODC`(Orthogonal direction change) and `ME`(Movement error), which have the greatest impact on the linear model and result in the lowest AIC score based on our experiment data. Therefore in the further analysis we will concentrate on this 3 accuracy measures to explain the differences between the conditions.
+
+
+#Multiple linear regression based on the AIC results
+```{r}
+#  ensure data type for modelling
+Participants$Condition <- as.factor(Participants$Condition)
+
+m1b <- lm(TP.bps. ~ Condition + MT.ms. + TRE + MDC + ODC + ME, data= Participants)
+
+summary(m1b)
+anova(m1b)
+coefficients(m1b)
+confint(m1b, level = 0.95)
+
+```
+
+```{r}
+layout(matrix(c(1,2,3,4),2,2)) 
+plot (m1b)
+```
+
+The multiple linear regression based on the AIC results provides an increased R-squared of 0.52. This is an improvement over both the "outlier-pruned" Model 1a (R-squared = 0.43) and the original linear Model 1 (R-squared 0.33). And unlike the outlier removal method, this preserves all data points. 
+However, in the end we chose to use Model 1 so as to not risk overcomplicating the model.
 
 
 # PART III Analysis: Linear model_2 (with MDC as independent variable)
 
-Based on exploratory analysis we saw that three of the accuracy measures (MDC, ODC, and error %) demonstrated similar scaled results for each condition, with ME deviating from the rest. We then looked at model testing for each. Based on model testing we found that MDC seemed to provide the best model fit of MDC, ODC, ME, and error %. For ease of reading we have left just the MDC. 
+Based on exploratory analysis we saw that four of the accuracy measures (MDC, ODC, ME, and error %) demonstrated similar scaled results for each condition, with ME and error % flipping on Sway and one-handed conditions. We then looked at model testing for each. Based on model testing we found that MDC seemed to provide the best model fit of MDC, ODC, ME, and error %. For ease of reading we have left the initial R testing for each and the full examination of our chosen MDC.
+
+#Error Percentage
+```{r}
+m3 <- lm( ER... ~ Condition, data = Participants)
+summary(m3)
+anova(m3)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m3, col=as.factor(Participants$Condition))
+```
+
+Normal Q-Q demonstrates how difficult it is to use the click error percentage as a metric for judging accuracy. The levels are not sufficiently numerous, and degrade the quality of a model. R-squared is just 0.06. 
+
+
+#ME
+```{r}
+m4 <- lm( ME ~ Condition, data = Participants)
+summary(m4)
+anova(m4)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m4, col=as.factor(Participants$Condition))
+```
+
+ME produces an R-squared of 0.17.
+
+#ODC
+```{r}
+m5 <- lm( ODC ~ Condition, data = Participants)
+summary(m5)
+anova(m5)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m5, col=as.factor(Participants$Condition))
+```
+
+ODC produces an R-squared of 0.28.
+
+#MDC - Mean Direction Changes
+
 ```{r}
 m2 <- lm( MDC ~ Condition, data = Participants)
 summary(m2)
-plot(m2, col=as.factor(Participants$Condition))
 anova(m2)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m2, col=as.factor(Participants$Condition))
+
 ```
 
-Normal Q-Q shows the "best fit" for residuals with an MDC linear model when compared with other accuracy measures. Therefore we are proceeding with this. 
+With MDC the R-squared is 0.35, the highest of the accuracy measures. Visually the normal Q-Q shows the "best fit" for residuals with an MDC linear model when compared with other accuracy measures. Therefore we are proceeding with MDC. 
+
 
 ```{r}
 m2$coefficients
@@ -655,10 +729,11 @@ Participants %>%
   scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
 
 ```
+
 In the above model the baseline condition (C01: laptop) is being treated as the y-intercept, since the conditions are treated as levels. The residuals are the coefficient (offset) for each condition from the baseline condition. For mean direction changes the two-handed touch is closest (has the smallest residual) to the baseline condition. 
 
 
-# Hypotheses and planned contrast regarding throughput
+# Hypotheses and planned contrast regarding accuracy
 * \\(H_2\\): Mobile phone based "remote mouses" have a higher accuracy when using touchpad method compared to sway method. (C02+C03)-C04=0
 * \\(H_3.1\\): Mobile phone based "remote mouses" have a higher accuracy when using two-handed pointing method compared to one-handed pointing method. C03-C02=0
 
@@ -683,10 +758,16 @@ In the above model the baseline condition (C01: laptop) is being treated as the 
   summary(m2.contrast)
 ```
 
+
 **Interpretation:** 
+
 H_2) The estimate of the difference in accuracy between mobile phone touchpad methods and the sway method is 0.08, with SE = 0.115. This is not significant, so we therefore cannot accept that, when combined, one-handed and two-handed are significantly more accurate than sway. 
-Although taken on its own the two-handed does appear to be more accurate than sway, this was not part of this hypothesis.
+Although taken on its own the two-handed does appear to be more accurate than sway, this was not part of the hypothesis.
 NOT ACCEPTED
 
 H_3.1) The estimate of the difference in accuracy between the two-handed pointing method and one-handed pointing method does show very high significance, with an estimate of -0.71, SE = 0.08, and P < 1e-10. Based on this we strongly accept the hypothesis. 
 STRONGLY ACCEPTED
+
+
+
+
