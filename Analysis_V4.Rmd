@@ -139,7 +139,6 @@ Participants_raw$Participant[Participants_raw$Participant == "P07"] <- "P7"
 Participants_raw$Participant[Participants_raw$Participant == "P08"] <- "P8"
 Participants_raw$Participant[Participants_raw$Participant == "P09"] <- "P9"
 Participants <- Participants_raw
-Participants
 ```
 
 ```{r Ensure that independent variables are factors}
@@ -177,6 +176,8 @@ plot_grid(
   nrow = 1)
 ```
 
+Although outliers are observed in the beeswarm, there are nice clusters across participants for the first three conditions (Laptop, 1-handed touch, 2-handed touch). Sway is less predictable. 
+
 # Plotting the mean throughput (by block):
 ```{r}
 pd <- position_dodge(0.3) # ensure no overlaps
@@ -204,7 +205,10 @@ plot_grid(
     scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },
   nrow = 1)
+
+
 ```
+
 In general the second block appears to show slightly higher throughput in completing the tasks. In the case of the Laptop condition it appears almost significant, but for the mobile touchpad there is little difference from one block to the next. In the case of Sway the shift is greater, suggesting possible learning effect. 
 
 # Plotting beeswarm of the data points and the mean time (by participant):
@@ -233,6 +237,7 @@ plot_grid(
   },
   nrow = 1)
 ```
+
 We observe in the above plots the extreme effect of a single outlier sequence on Participant 8 (P8)'s results. 
 
 # Plotting the mean time (by block):
@@ -262,6 +267,7 @@ plot_grid(
   },
   nrow = 1)
 ```
+
 In general the second block is nearly on or contained within the confidence interval of the first block. Hoewver, a slight increase in speed (reduction in mean time) is viewed in the 2-handed touch and the sway conditions. This could be learning effect. 
 
 # Plotting the mean error (by blocks, by participant):
@@ -296,6 +302,7 @@ plot_grid(
   },
   nrow = 1)
 ```
+
 Mean error does not appear to be significantly affected by block. However, participant 9 in particular had more difficulty on average than other participants.
 
 # Plotting jitter and mean error percentage:
@@ -324,6 +331,7 @@ plot_grid(
   },
   nrow = 1)
 ```
+
 As is most clear in the jitter, the majority of sequences involved 0 errors. With the 95% CI error bars it can be seen the one-handed touch (C02) and the sway (C04) are both generating more errors than the laptop trackpad baseline condition. Two-handed touch appears to be slightly higher in errors than the laptop condition, but not necessarily significantly. 
 
 # Plotting various additional accuracy measures:
@@ -383,24 +391,77 @@ legend <- get_legend(p1 + theme(legend.position="bottom"))
  grid <- plot_grid(p1, p2, p3, p4, nrow = 2)
  plot_grid(grid, legend, ncol = 1, rel_heights = c(1, .1))
 ```
+
 With the exception of ME (mean error) which shows an inflated value for 1-handed touch, the error/accuracy measures have very similar relative distribution across conditions. For blocks all four accuracy measures show fairly tight groupings relative to condition. 
+
+# Actual Numbers: 
+
+Throughput (bps):
+
+Laptop: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C01"], na.rm = FALSE))`, SD=`r (sd(Participants$TP.bps.[Participants$Condition=="C01"], na.rm = FALSE))`) 
+
+One-handed: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C02"], na.rm = FALSE))`, SD=`r (sd(Participants$TP.bps.[Participants$Condition=="C02"], na.rm = FALSE))`)
+
+Two-handed: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C03"], na.rm = FALSE))`, SD=`r (sd(Participants$TP.bps.[Participants$Condition=="C03"], na.rm = FALSE))`)
+
+Sway: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C04"], na.rm = FALSE))`, SD=`r (sd(Participants$TP.bps.[Participants$Condition=="C04"], na.rm = FALSE))`)
+
+Mean Time (in ms): 
+
+Laptop: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C01"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C01"], na.rm = FALSE))`)
+
+One-handed: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C02"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C02"], na.rm = FALSE))`)
+
+Two-handed: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C03"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C03"], na.rm = FALSE))`)
+
+Sway: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C04"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C04"], na.rm = FALSE))`)
+
+Error (percentage): 
+
+Laptop: (M=`r (mean(Participants$ER...[Participants$Condition=="C01"], na.rm = FALSE))`, SD=`r (sd(Participants$ER...[Participants$Condition=="C01"], na.rm = FALSE))`)
+
+One-handed: (M=`r (mean(Participants$ER...[Participants$Condition=="C02"], na.rm = FALSE))`, SD=`r (sd(Participants$ER...[Participants$Condition=="C02"], na.rm = FALSE))`)
+
+Two-handed: (M=`r (mean(Participants$ER...[Participants$Condition=="C03"], na.rm = FALSE))`, SD=`r (sd(Participants$ER...[Participants$Condition=="C03"], na.rm = FALSE))`)
+
+Sway: (M=`r (mean(Participants$ER...[Participants$Condition=="C04"], na.rm = FALSE))`, SD=`r (sd(Participants$ER...[Participants$Condition=="C04"], na.rm = FALSE))`)
 
 
 # PART I Analysis: Linear model_1 (with throughput as independent variable)
 ```{r}
 m1 <- lm( TP.bps. ~ Condition, data = Participants)
 summary(m1)
+plot(m1, col=as.factor(Participants$Condition))
 anova(m1)
 ```
+# adding a model for displaying effects of outlier removal
+Based on the large deviation at the "tail" of the Q-Q plot we decided to try eliminating the "suspiciously low" throughput outliers and based model_1a on this. This was purely for experimental purposes to see if the difference was such that it would be worth sacrificing some questionable data in the interest of revealing a more realistic distribution. 
+```{r}
+m1a <- lm( TP.bps. ~ Condition, data = Participants[Participants$TP.bps.>=0.7,])
+summary(m1a)
+plot(m1a, col=as.factor(Participants$Condition))
+anova(m1a)
+```
+
+By comparing the models 1 and 1a we can see that removal provides an improved fit (Normal Q-Q). We found that it does in fact provide a higher R-squared while maintaining the same level of significance. 
+R-squared 0.33 -> 0.43
+F-stat 71.2 -> 101.3
+DF reduced from 428 -> 397
+p-value maintained at 2.2e-16 
+
 
 ```{r}
 m1$coefficients
+m1a$coefficients
 ```
 
-# Plotting the results of the linear model_1
+# Plotting the results of the linear model_1, and the experimental model_1a (lower outliers removed)
 
 ```{r} 
+str(Participants)
+Participants$Condition<-as.factor(as.character(Participants$Condition))
 
+#model_1
 coeffs_df <- tibble(
   Coeff_id = paste0("b", 0:(length(m1$coefficients)-1)),
   Coeff = m1$coefficients,
@@ -425,10 +486,36 @@ Participants %>%
   geom_hline(yintercept = m1$coefficients[1], color = "red", linetype = "dashed") +
   ylab("Throughput (bps)") +
   scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+# model_1a
+coeffs1a_df <- tibble(
+  Coeff_id = paste0("b", 0:(length(m1a$coefficients)-1)),
+  Coeff = m1a$coefficients,
+  Plot_x = levels(Participants$Condition),
+  Plot_y = c(m1a$coefficients[1], m1a$coefficients[1], m1a$coefficients[1], m1a$coefficients[1]),
+  Plot_yend = c(m1a$coefficients[1], 
+            m1a$coefficients[1] + m1a$coefficients[2], 
+            m1a$coefficients[1] + m1a$coefficients[3],
+            m1a$coefficients[1] + m1a$coefficients[4])
+)
+
+Participants[Participants$TP.bps.>=0.7,] %>% 
+  ggplot(aes(x = Condition, y = TP.bps.)) +
+  geom_beeswarm(alpha = 0.3) +
+  geom_point(data = coeffs1a_df, 
+             aes(x = Plot_x, y = Plot_yend), 
+             color = "red", shape = 18, size = 3) +
+  geom_segment(data = coeffs1a_df, 
+               aes(x = Plot_x, xend = Plot_x, y = Plot_y, yend = Plot_yend), 
+               color = "red",
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  geom_hline(yintercept = m1a$coefficients[1], color = "red", linetype = "dashed") +
+  ylab("Throughput (bps)") +
+  scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   
 
 ```
-In the above model the baseline condition (C01: laptop) is being treated as the y-intercept, with 0 slope. This is useful for visually illustrating the decreased throughput for each of the remote mouse conditions, but is not a very useful predictive model (presumably because the conditions are factors, and do not have a defined logical ordering as a numeric metric or Block# would). 
+In the above model the baseline condition (C01: laptop) is being treated as the y-intercept, since the conditions are treated as levels. The residuals are the coefficient (offset) for each condition from the baseline condition. Two-handed touch is closest (has the smallest residual) to the baseline condition. 
 
 
 # Hypotheses and planned contrast regarding throughput
@@ -454,12 +541,34 @@ In the above model the baseline condition (C01: laptop) is being treated as the 
   xlab("Hypothesis") +
   ylab("Estimate of the difference") 
   summary(m1.contrast)
+  
+    m1a.contrast <- glht(m1a, linfct = mcp(Condition =
+  c("(C02+C03+C04)-C01=0",
+    "C03-C02=0"
+    )))
+
+  m1a.contrast %>%
+  confint() %>%
+  tidy() %>%
+  ggplot(aes(x = paste(lhs, "==", rhs))) +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_point(aes(y = estimate)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) +
+  expand_limits(y = 0) +
+  coord_flip() +
+  xlab("Hypothesis") +
+  ylab("Estimate of the difference") 
+  summary(m1a.contrast)
 ```
 
 **Interpretation:** Recall: the nearer to the zero, the more valid is the hypothesis 
-H_1) The estimate of the difference between mobile phone based “remote mouses” and laptop based touchpad  is roughly -2.68, what means the hypothesis should not be accepted, since throughput with laptop based touchpad is substantially larger compared to all mobile phone based conditions
+H_1) The estimate of the difference between mobile phone based "remote mouses" and laptop based touchpad is roughly -2.68, what means the hypothesis should not be accepted, since throughput with laptop based touchpad is substantially larger compared to all mobile phone based conditions, the P-value is significant (<1e-10), and the standard error is low (0.19) relative to the estimate. 
+REJECTED
 
-H_2) The estimate of the difference between two-handed pointing method and one-handed pointing method on the mobile phone is close to zero (+0.22). The throughput in two-handed method is only minimal larger, which may be in this case not enough to support the hypothesis.
+H_3.2) The estimate of the difference between two-handed pointing method and one-handed pointing method on the mobile phone is close to zero (+0.22). The throughput in two-handed method is only minimally larger, and yet it is significant (as the standard error is so low at 0.08, and the P value is < 0.01). Therefore, even such a small difference we accept as support of the hypothesis. 
+ACCEPTED
+
+With the added model_1a, we see that both hypotheses have estimates closer to 0. However, for the purposes of this study we will use the results from the full test group (all sequences from all participants - model_1), as that was mentioned in our protocols as a goal and the results (at least for TP) are similar. 
 
 
 
@@ -497,3 +606,87 @@ print(anova_result)
 **Interpretation:** Throughput is an accepted measure — now endorsed in an ISO standard (MacKenzie et al (2001), p. 14). It has two core components: (a) speed, represented by movement time and (b) accuracy, represented by 7 accuracy measures, mentioned above. Results from model comparison still retain MT(movement time) as one of the core components emphasize 3 from 7 accuracy measures:   `MDC`(Movement direction change), `ODC`(Orthogonal direction change) and `ME`(Movement error), which have the greatest impact on the linear model and result in the lowest AIC score based on our experiment data. Therefore in the further analysis we will concentrate on this 3 accuracy measures to explain the differences between the conditions.
 
 
+# PART III Analysis: Linear model_2 (with MDC as independent variable)
+
+Based on exploratory analysis we saw that three of the accuracy measures (MDC, ODC, and error %) demonstrated similar scaled results for each condition, with ME deviating from the rest. We then looked at model testing for each. Based on model testing we found that MDC seemed to provide the best model fit of MDC, ODC, ME, and error %. For ease of reading we have left just the MDC. 
+```{r}
+m2 <- lm( MDC ~ Condition, data = Participants)
+summary(m2)
+plot(m2, col=as.factor(Participants$Condition))
+anova(m2)
+```
+
+Normal Q-Q shows the "best fit" for residuals with an MDC linear model when compared with other accuracy measures. Therefore we are proceeding with this. 
+
+```{r}
+m2$coefficients
+```
+
+# Plotting the results of the linear model_2
+
+```{r} 
+str(Participants)
+Participants$Condition<-as.factor(as.character(Participants$Condition))
+
+#model_1
+coeffs2_df <- tibble(
+  Coeff_id = paste0("b", 0:(length(m1$coefficients)-1)),
+  Coeff = m2$coefficients,
+  Plot_x = levels(Participants$Condition),
+  Plot_y = c(m2$coefficients[1], m2$coefficients[1], m2$coefficients[1], m2$coefficients[1]),
+  Plot_yend = c(m2$coefficients[1], 
+            m2$coefficients[1] + m2$coefficients[2], 
+            m2$coefficients[1] + m2$coefficients[3],
+            m2$coefficients[1] + m2$coefficients[4])
+)
+
+Participants %>% 
+  ggplot(aes(x = Condition, y = MDC)) +
+  geom_beeswarm(alpha = 0.3) +
+  geom_point(data = coeffs2_df, 
+             aes(x = Plot_x, y = Plot_yend), 
+             color = "red", shape = 18, size = 3) +
+  geom_segment(data = coeffs2_df, 
+               aes(x = Plot_x, xend = Plot_x, y = Plot_y, yend = Plot_yend), 
+               color = "red",
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  geom_hline(yintercept = m2$coefficients[1], color = "red", linetype = "dashed") +
+  ylab("Mean Direction Changes (error)") +
+  scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+```
+In the above model the baseline condition (C01: laptop) is being treated as the y-intercept, since the conditions are treated as levels. The residuals are the coefficient (offset) for each condition from the baseline condition. For mean direction changes the two-handed touch is closest (has the smallest residual) to the baseline condition. 
+
+
+# Hypotheses and planned contrast regarding throughput
+* \\(H_2\\): Mobile phone based "remote mouses" have a higher accuracy when using touchpad method compared to sway method. (C02+C03)-C04=0
+* \\(H_3.1\\): Mobile phone based "remote mouses" have a higher accuracy when using two-handed pointing method compared to one-handed pointing method. C03-C02=0
+
+
+```{r}
+  m2.contrast <- glht(m2, linfct = mcp(Condition =
+  c("(C02+C03)-C04=0",
+    "C03-C02=0"
+    )))
+
+  m2.contrast %>%
+  confint() %>%
+  tidy() %>%
+  ggplot(aes(x = paste(lhs, "==", rhs))) +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_point(aes(y = estimate)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) +
+  expand_limits(y = 0) +
+  coord_flip() +
+  xlab("Hypothesis") +
+  ylab("Estimate of the difference") 
+  summary(m2.contrast)
+```
+
+**Interpretation:** 
+H_2) The estimate of the difference in accuracy between mobile phone touchpad methods and the sway method is 0.08, with SE = 0.115. This is not significant, so we therefore cannot accept that, when combined, one-handed and two-handed are significantly more accurate than sway. 
+Although taken on its own the two-handed does appear to be more accurate than sway, this was not part of this hypothesis.
+NOT ACCEPTED
+
+H_3.1) The estimate of the difference in accuracy between the two-handed pointing method and one-handed pointing method does show very high significance, with an estimate of -0.71, SE = 0.08, and P < 1e-10. Based on this we strongly accept the hypothesis. 
+STRONGLY ACCEPTED
