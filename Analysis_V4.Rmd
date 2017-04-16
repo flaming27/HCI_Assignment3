@@ -161,7 +161,8 @@ plot_grid(
     geom_beeswarm() + 
     ylab("Mean Throughput")+
     expand_limits(y = 0) +
-    theme(legend.position = "none")
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },{
   Participants %>% 
     ggplot(aes(x = Condition, y = TP.bps., color =  Participant, group = Participant)) +
@@ -170,7 +171,8 @@ plot_grid(
     stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 1, position = pd) + 
     ylab("Mean Throughput and 95% CI") +
     expand_limits(y = 0) +
-    theme(legend.position = "top")
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },
   nrow = 1)
 ```
@@ -187,7 +189,8 @@ plot_grid(
     ylab("Mean Throughput")+
     expand_limits(y = 0) +
     expand_limits(y = 4.25) +
-    theme(legend.position = "none")
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },{
   Participants %>% 
     ggplot(aes(x = Condition, y = TP.bps., color =  Block, group = Block)) +
@@ -197,7 +200,8 @@ plot_grid(
     ylab("Mean Throughput and 95% CI") +
     expand_limits(y = 0) +
     expand_limits(y = 4.25) +
-    theme(legend.position = "right")
+    theme(legend.position = "right", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },
   nrow = 1)
 ```
@@ -214,7 +218,8 @@ plot_grid(
     geom_beeswarm() + 
     ylab("Mean Time")+
     expand_limits(y = 0) +
-    theme(legend.position = "none")
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },{
   Participants %>% 
     ggplot(aes(x = Condition, y = MT.ms., color =  Participant, group = Participant)) +
@@ -223,7 +228,8 @@ plot_grid(
     stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 1, position = pd) + 
     ylab("Mean Time and 95% CI") +
     expand_limits(y = 0) +
-    theme(legend.position = "right")
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },
   nrow = 1)
 ```
@@ -240,7 +246,8 @@ plot_grid(
     geom_beeswarm() + 
     ylab("Mean Time")+
     expand_limits(y = 0) +
-    theme(legend.position = "none")
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },{
   Participants %>% 
     ggplot(aes(x = Condition, y = MT.ms., color =  Block, group = Block)) +
@@ -250,7 +257,8 @@ plot_grid(
     ylab("Mean Time and 95% CI") +
     expand_limits(y = 0) +
     expand_limits(y = 4) +
-    theme(legend.position = "right")
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },
   nrow = 1)
 ```
@@ -272,7 +280,8 @@ plot_grid(
     ylab("Mean error percentage") +
     expand_limits(y = 0) +
     expand_limits(y = 20) +
-    theme(legend.position = "top")
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },
   # By participants
   {
@@ -283,24 +292,26 @@ plot_grid(
     xlab("") +
     ylab("") +
     expand_limits(y = 0) +
-      theme(legend.position = "top")
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },
   nrow = 1)
 ```
 
-# Plotting beeswarm and mean error percentage:
+
+# Plotting jitter and mean error percentage:
 ```{r}
-pd <- position_dodge(0.3) # ensure no overlaps
 
 plot_grid(
   # By participants
   { 
   Participants %>% 
     ggplot(aes(x = Condition, y = ER..., color = Participant)) +
-    geom_beeswarm() + 
+    geom_jitter() + 
     ylab("Mean error %")+
     expand_limits(y = 0) +
-    theme(legend.position = "none")
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },{
   Participants %>% 
     ggplot(aes(x = Condition, y = ER...)) +
@@ -309,11 +320,12 @@ plot_grid(
     stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 1, position = pd) + 
     ylab("Mean error % and 95% CI") +
     expand_limits(y = 0) +
-    theme(legend.position = "top")
+    theme(axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
   },
   nrow = 1)
 ```
-As is most clear in the Beeswarm, the majority of sequences involved 0 errors. With the 95% CI error bars it can be seen the one-handed touch (C02) and the sway (C04) are both generating more errors than the laptop trackpad baseline condition. Two-handed touch appears to be slightly higher in errors than the laptop condition, but not necessarily significantly. 
+As is most clear in the jitter, the majority of sequences involved 0 errors. With the 95% CI error bars it can be seen the one-handed touch (C02) and the sway (C04) are both generating more errors than the laptop trackpad baseline condition. Two-handed touch appears to be slightly higher in errors than the laptop condition, but not necessarily significantly. 
 
 # PART I Analysis: Linear model_1 (with throughput as independent variable)
 ```{r}
@@ -329,7 +341,6 @@ m1$coefficients
 # Plotting the results of the linear model_1
 
 ```{r} 
-############################# Results in error, which I could not fix yet
 
 coeffs_df <- tibble(
   Coeff_id = paste0("b", 0:(length(m1$coefficients)-1)),
@@ -353,18 +364,17 @@ Participants %>%
                color = "red",
                arrow = arrow(length = unit(0.03, "npc"))) +
   geom_hline(yintercept = m1$coefficients[1], color = "red", linetype = "dashed") +
-  #theme(axis.text.x = element_text(angle=45)) +
+  ylab("Throughput (bps)") +
   scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
-  ylim(0, 6.5)
   
 
 ```
-
+In the above model the baseline condition (C01: laptop) is being treated as the y-intercept, with 0 slope. This is useful for visually illustrating the decreased throughput for each of the remote mouse conditions, but is not a very useful predictive model (presumably because the conditions are factors, and do not have a defined logical ordering as a numeric metric or Block# would). 
 
 
 # Hypotheses and planned contrast regarding throughput
-* \\(H_1\\): Mobile phone based “remote mouses” have a higher throughput than laptop based touchpads.
-* \\(H_3.2\\): Mobile phone based “remote mouses” have a higher throughput when using two-handed pointing method compared to one-handed pointing method.
+* \\(H_1\\): Mobile phone based “remote mouses” have a higher throughput than laptop based touchpads. (C02+C03+C04)-C01=0
+* \\(H_3.2\\): Mobile phone based “remote mouses” have a higher throughput when using two-handed pointing method compared to one-handed pointing method. C03-C02=0
 
 
 ```{r}
@@ -425,6 +435,6 @@ print(anova_result)
 ```
 
 
-**Interpretation:** Throughput is is an accepted measure — now endorsed in an ISO standard (MacKenzie et al (2001), p. 14). It has two core components: (a) speed, represented by movement time and (b) accuracy, represented by 7 accuracy measures, mentioned above. Results from model comparison still retain MT(movement time) as one of the core components emphasize 3 from 7 accuracy measures:   `MDC`(Movement direction change), `ODC`(Orthogonal direction change) and `ME`(Movement error), which have the greatest impact on the linear model and result in the lowest AIC score based on our experiment data. Therefore in the further analysis we will concentrate on this 3 accuracy measures to explain the differences between the conditions.
+**Interpretation:** Throughput is an accepted measure — now endorsed in an ISO standard (MacKenzie et al (2001), p. 14). It has two core components: (a) speed, represented by movement time and (b) accuracy, represented by 7 accuracy measures, mentioned above. Results from model comparison still retain MT(movement time) as one of the core components emphasize 3 from 7 accuracy measures:   `MDC`(Movement direction change), `ODC`(Orthogonal direction change) and `ME`(Movement error), which have the greatest impact on the linear model and result in the lowest AIC score based on our experiment data. Therefore in the further analysis we will concentrate on this 3 accuracy measures to explain the differences between the conditions.
 
 
