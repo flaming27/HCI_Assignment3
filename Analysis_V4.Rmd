@@ -75,8 +75,6 @@ options(DT.autoHideNavigation = TRUE)
 
 # Experimental design and data description
 
-The following dataset is ...
-
 * Four input conditions: 
 
 C01. Computer trackpad (index finger of dominant to touch; baseline)
