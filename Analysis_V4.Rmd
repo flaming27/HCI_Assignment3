@@ -589,6 +589,8 @@ With the added model_1a, we see that both hypotheses have estimates closer to 0.
 ```{r}
 lm_all <- lm(
   TP.bps. ~  
+  Condition + 
+  Block + 
   MT.ms. +         # Speed represented by movement time
   TRE +            # 1. Target re-entry
   TAC +            # 2. Task axis crossing
@@ -614,7 +616,7 @@ print(anova_result)
 ```
 
 
-**Interpretation:** Throughput is an accepted measure now endorsed in an ISO standard (MacKenzie et al (2001), p. 14). It has two core components: (a) speed, represented by movement time and (b) accuracy, represented by 7 accuracy measures, mentioned above. Results from model comparison still retain MT(movement time) as one of the core components emphasize 3 from 7 accuracy measures:   `MDC`(Movement direction change), `ODC`(Orthogonal direction change) and `ME`(Movement error), which have the greatest impact on the linear model and result in the lowest AIC score based on our experiment data. Therefore in the further analysis we will concentrate on this 3 accuracy measures to explain the differences between the conditions.
+**Interpretation:** Throughput is an accepted measure now endorsed in an ISO standard (MacKenzie et al (2001), p. 14). It has two core components: (a) speed, represented by movement time and (b) accuracy, represented by 7 accuracy measures, mentioned above. As well as the Condition and Block. Results from model comparison still retain MT(movement time) as one of the core components, and emphasize 4 from 7 accuracy measures:   `TRE` (Target re-entry), `MDC`(Movement direction change), `ODC`(Orthogonal direction change) and `ME`(Movement error), which have the greatest impact on the linear model and result in the lowest AIC score based on our experiment data. Therefore in the further analysis we will concentrate on this 3 accuracy measures to explain the differences between the conditions.
 
 
 #Multiple linear regression based on the AIC results
@@ -622,8 +624,11 @@ print(anova_result)
 #  ensure data type for modelling
 Participants$Condition <- as.factor(Participants$Condition)
 
-m1b <- lm(TP.bps. ~ Condition + MT.ms. + TRE + MDC + ODC + ME, data= Participants)
-
+m1b <- lm(TP.bps. ~ Condition + Block + MT.ms. + TRE + MDC + ODC + ME, data= Participants)
+#library(lme4)
+#m1b <- lm(MT.ms. ~ Condition + Block + TP.bps. + TRE + MDC + ODC + ME, data= Participants) 
+#m1b.red <- lm(MT.ms. ~Condition + TP.bps. + TRE + MDC + ODC + ME, data= Participants) 
+#anova(m1b, m1b.red, test="LRT")
 summary(m1b)
 anova(m1b)
 coefficients(m1b)
