@@ -1,0 +1,895 @@
+---
+title: "Assignment3_Analysis"
+output: html_document
+---
+
+# Team members
+1. [Maria Herdt] [13-704-911]
+2. [Justin Sosnoski] [16-726-028]
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+####
+# BEGIN: Header
+####
+
+# The "pacman" package allows p_load() and p_load_gh() which
+# automatically install missing packages and load them
+if (!require("pacman")) install.packages("pacman", repos='https://stat.ethz.ch/CRAN/'); library(pacman)
+
+p_load(
+   car,        # grab bag of useful functions for NHST
+   multcomp,   # for glht (planned comparison, post-hoc test)
+   tidyverse,  # collection of the tidyverse packages (this automatically load the following):
+   #dplyr,     #   - for data wrangling
+   #tibble,    #   - a stricter alternative to data.frame
+   #readr,     #   - a stricter alternative to read.csv
+   #ggplot2,   #   - for plotting
+               # other packages in tidyverse that are non-core
+   stringr,    #   - for string functions
+   tidyr,      #   - for data tidying
+   forcats,    #   - utility functions for working with factor levels
+               # extensions of tidyverse
+   broom,      #   - for cleaing output from models, e.g., lm()
+   cowplot,    #   - adds plot_grid() to put multiple ggplot()'s togeter
+   GGally,     #   - adds ggpairs() which is a smarter scatterplot matrix
+               # data structure
+   GetoptLong, #   - string interpolation. See qq() explanation below
+   lubridate,  #   - utility for parsing and performing arithematic on dates 
+               # 
+               # visualization & interactivity
+   Hmisc,      #   - for plotting mean and CI in ggplot
+   rafalib,    #   - for imagemat function (visualize contrast codings)
+   DT,         #   - for showing data table with navigation/search controls
+               # testing:
+   assertthat  #   - unit-testing functions
+   
+)
+
+p_load_gh(
+   "eclarke/ggbeeswarm" # beeswarm plot extension for ggplot2
+)
+
+# GetoptLong config (string interpolation)
+qq.options("code.pattern" = "#\\{CODE\\}") 
+
+# ggplot2 config (plot theme)
+myTheme <- theme(
+   panel.background = element_blank(), 
+   panel.grid.major = element_line(color="lightgrey", size = 0.2)
+)
+
+# DT config
+options(DT.options = list(pageLength = 10))
+options(DT.autoHideNavigation = TRUE)
+
+# Optional: Decimal output readability
+# options(digits=2)
+##   NOTE: This option might cause output to be printed with rounding. (default value = 7)
+
+####
+# END: Header
+####
+```
+
+# Experimental design and data description
+
+The following dataset is ...
+
+* Four input conditions: 
+
+C01. Computer trackpad (index finger of dominant to touch; baseline)
+C02. Mobile phone as touchpad one-handed (phone in dominant hand, thumb to touch)
+C03. Mobile phone as touchpad two-handed (phone in non-dominant hand, dominant index finger to touch)
+C04. Mobile phone in sway mode
+
+* Three levels of target amplitudes:  (300, 450, 600)
+
+* Three levels of target width:  (30, 45, 60)
+
+* Number of participants: 6
+
+* Number of repetitions per participants: 2 trial blocks
+
+* Total number of results per participant: 4 x 3 x 3 x 2 = 72 results
+
+**Accuracy measures /according to MacKenzie et al (2001)/
+
+TRE	<dbl>	Target re-entry
+TAC	<dbl>	Task axis crossing
+MDC	<dbl>	Movement direction change
+ODC	<dbl>	Orthogonal direction change
+MV	<dbl>	Movement variability
+ME	<dbl>	Movement error
+MO	<dbl>	Movement offset
+
+
+# Loading data
+```{r}
+
+load_data <- function(path) { 
+  files <- dir(path, pattern = '\\.sd2', full.names = TRUE)
+  tables <- lapply(files, read.csv)
+  bind_rows(tables)
+}
+
+setwd('..')
+
+Participant1 <- load_data("raw data\\Participant1")
+
+Participant2 <- load_data("raw data\\Participant2")
+
+Participant3 <- load_data("raw data\\Participant3")
+
+Participant7 <- load_data("raw data\\Participant7")
+
+Participant8 <- load_data("raw data\\Participant8")
+
+Participant9 <- load_data("raw data\\Participant9")
+
+Participants_raw <- bind_rows(Participant1, Participant2, Participant3, Participant7, Participant8, Participant9)
+
+Participants_raw
+```
+
+# Tidying/wrangling 
+```{r}
+
+
+Participants_raw$Participant[Participants_raw$Participant == "P07"] <- "P7"
+Participants_raw$Participant[Participants_raw$Participant == "P08"] <- "P8"
+Participants_raw$Participant[Participants_raw$Participant == "P09"] <- "P9"
+Participants <- Participants_raw
+```
+
+```{r Ensure that independent variables are factors}
+
+Participants$Condition <- as.factor(Participants$Condition)
+
+```
+
+
+
+# Plotting beeswarm of the data points and the mean throughput (by participant):
+```{r}
+pd <- position_dodge(0.3) # ensure no overlaps
+
+plot_grid(
+  { 
+  Participants %>% 
+    ggplot(aes(x = Condition, y = TP.bps., color = Participant)) +
+    geom_beeswarm() + 
+    ylab("Mean Throughput")+
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },{
+  Participants %>% 
+    ggplot(aes(x = Condition, y = TP.bps., color =  Participant, group = Participant)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 1, position = pd) + 
+    ylab("Mean Throughput and 95% CI") +
+    expand_limits(y = 0) +
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },
+  nrow = 1)
+```
+
+Although outliers are observed in the beeswarm, there are nice clusters across participants for the first three conditions (Laptop, 1-handed touch, 2-handed touch). Sway is less predictable. 
+
+# Plotting the mean throughput (by block):
+```{r}
+pd <- position_dodge(0.3) # ensure no overlaps
+
+plot_grid(
+  { 
+  Participants %>% 
+    ggplot(aes(x = Condition, y = TP.bps., color = Block)) +
+    geom_beeswarm() + 
+    ylab("Mean Throughput")+
+    expand_limits(y = 0) +
+    expand_limits(y = 4.25) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },{
+  Participants %>% 
+    ggplot(aes(x = Condition, y = TP.bps., color =  Block, group = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 1, position = pd) + 
+    ylab("Mean Throughput and 95% CI") +
+    expand_limits(y = 0) +
+    expand_limits(y = 4.25) +
+    theme(legend.position = "right", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },
+  nrow = 1)
+
+
+```
+
+In general the second block appears to show slightly higher throughput in completing the tasks. In the case of the Laptop condition it appears almost significant, but for the mobile touchpad there is little difference from one block to the next. In the case of Sway the shift is greater, suggesting possible learning effect. 
+
+# Plotting beeswarm of the data points and the mean time (by participant):
+```{r}
+pd <- position_dodge(0.3) # ensure no overlaps
+
+plot_grid(
+  { 
+  Participants %>% 
+    ggplot(aes(x = Condition, y = MT.ms., color = Participant)) +
+    geom_beeswarm() + 
+    ylab("Mean Time")+
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },{
+  Participants %>% 
+    ggplot(aes(x = Condition, y = MT.ms., color =  Participant, group = Participant)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 1, position = pd) + 
+    ylab("Mean Time and 95% CI") +
+    expand_limits(y = 0) +
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },
+  nrow = 1)
+```
+
+We observe in the above plots the extreme effect of a single outlier sequence on Participant 8 (P8)'s results. 
+
+# Plotting the mean time (by block):
+```{r}
+pd <- position_dodge(0.3) # ensure no overlaps
+
+plot_grid(
+  { 
+  Participants %>% 
+    ggplot(aes(x = Condition, y = MT.ms., color = Block)) +
+    geom_beeswarm() + 
+    ylab("Mean Time")+
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },{
+  Participants %>% 
+    ggplot(aes(x = Condition, y = MT.ms., color =  Block, group = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 1, position = pd) + 
+    ylab("Mean Time and 95% CI") +
+    expand_limits(y = 0) +
+    expand_limits(y = 4) +
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },
+  nrow = 1)
+```
+
+In general the second block is nearly on or contained within the confidence interval of the first block. Hoewver, a slight increase in speed (reduction in mean time) is viewed in the 2-handed touch and the sway conditions. This could be learning effect. 
+
+# Plotting the mean error (by blocks, by participant):
+```{r}
+
+plot_grid(
+  # By blocks
+  {
+    Participants %>% 
+    ggplot(aes(x = Condition, y = ER..., color =  Block, group = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 1, position = pd) + 
+    xlab("") +
+    ylab("Mean error percentage") +
+    expand_limits(y = 0) +
+    expand_limits(y = 20) +
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },
+  # By participants
+  {
+  Participants %>% 
+    ggplot(aes(x = Condition, y = ER..., color =  Participant, group = Participant)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    xlab("") +
+    ylab("") +
+    expand_limits(y = 0) +
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },
+  nrow = 1)
+```
+
+Mean error does not appear to be significantly affected by block. However, participant 9 in particular had more difficulty on average than other participants.
+
+# Plotting jitter and mean error percentage:
+```{r}
+
+plot_grid(
+  # By participants
+  { 
+  Participants %>% 
+    ggplot(aes(x = Condition, y = ER..., color = Participant)) +
+    geom_jitter() + 
+    ylab("Mean error %")+
+    expand_limits(y = 0) +
+    theme(legend.position = "top", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },{
+  Participants %>% 
+    ggplot(aes(x = Condition, y = ER...)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 1, position = pd) + 
+    ylab("Mean error % and 95% CI") +
+    expand_limits(y = 0) +
+    theme(axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  },
+  nrow = 1)
+```
+
+As is most clear in the jitter, the majority of sequences involved 0 errors. With the 95% CI error bars it can be seen the one-handed touch (C02) and the sway (C04) are both generating more errors than the laptop trackpad baseline condition. Two-handed touch appears to be slightly higher in errors than the laptop condition, but not necessarily significantly. 
+
+# Plotting various additional accuracy measures:
+Now we look at the four different accuracy measures FittsTwo offers: Error percentage, movement direction change, orthogonal direction change, and movement error. 
+```{r}
+
+
+  # Standard 
+
+p1 <-  Participants %>% 
+    ggplot(aes(x = Condition, y = ER..., color = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    xlab("") +
+    ylab("ER %") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+  # MDC
+
+p2<-  Participants %>% 
+    ggplot(aes(x = Condition, y = MDC, color = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    xlab("") +
+    ylab("MDC") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+  # ODC
+
+p3<-  Participants %>% 
+    ggplot(aes(x = Condition, y = ODC, color = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    xlab("") +
+    ylab("ODC") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+  # ME
+
+p4<-  Participants %>% 
+    ggplot(aes(x = Condition, y = MV, color = Block)) +
+    stat_summary(fun.y = mean, geom = "point", shape = 18, size = 3, position = pd) + 
+    stat_summary(fun.y = mean, geom = "line", position = pd) + 
+    xlab("") +
+    ylab("ME") +
+    expand_limits(y = 0) +
+    theme(legend.position = "none", axis.text.x = element_text(angle=30), axis.title.x=element_blank()) + 
+    scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+legend <- get_legend(p1 + theme(legend.position="bottom"))
+ grid <- plot_grid(p1, p2, p3, p4, nrow = 2)
+ plot_grid(grid, legend, ncol = 1, rel_heights = c(1, .1))
+```
+
+With the exception of ME (mean error) which shows an inflated value for 1-handed touch, the error/accuracy measures have very similar relative distribution across conditions. We will look into this further in the linear model building. For blocks all four accuracy measures show fairly tight groupings relative to condition. 
+
+# Raw Numbers: 
+
+
+Throughput (bps):
+
+Laptop: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C01"], na.rm = FALSE))`, SD=`r (sd(Participants$TP.bps.[Participants$Condition=="C01"], na.rm = FALSE))`) 
+
+One-handed: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C02"], na.rm = FALSE))`, SD=`r (sd(Participants$TP.bps.[Participants$Condition=="C02"], na.rm = FALSE))`)
+
+Two-handed: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C03"], na.rm = FALSE))`, SD=`r (sd(Participants$TP.bps.[Participants$Condition=="C03"], na.rm = FALSE))`)
+
+Sway: (M=`r (mean(Participants$TP.bps.[Participants$Condition=="C04"], na.rm = FALSE))`, SD=`r (sd(Participants$TP.bps.[Participants$Condition=="C04"], na.rm = FALSE))`)
+
+
+Mean Time (in ms): 
+
+Laptop: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C01"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C01"], na.rm = FALSE))`)
+
+One-handed: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C02"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C02"], na.rm = FALSE))`)
+
+Two-handed: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C03"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C03"], na.rm = FALSE))`)
+
+Sway: (M=`r (mean(Participants$MT.ms.[Participants$Condition=="C04"], na.rm = FALSE))`, SD=`r (sd(Participants$MT.ms.[Participants$Condition=="C04"], na.rm = FALSE))`)
+
+
+Error (percentage): 
+
+Laptop: (M=`r (mean(Participants$ER...[Participants$Condition=="C01"], na.rm = FALSE))`, SD=`r (sd(Participants$ER...[Participants$Condition=="C01"], na.rm = FALSE))`)
+
+One-handed: (M=`r (mean(Participants$ER...[Participants$Condition=="C02"], na.rm = FALSE))`, SD=`r (sd(Participants$ER...[Participants$Condition=="C02"], na.rm = FALSE))`)
+
+Two-handed: (M=`r (mean(Participants$ER...[Participants$Condition=="C03"], na.rm = FALSE))`, SD=`r (sd(Participants$ER...[Participants$Condition=="C03"], na.rm = FALSE))`)
+
+Sway: (M=`r (mean(Participants$ER...[Participants$Condition=="C04"], na.rm = FALSE))`, SD=`r (sd(Participants$ER...[Participants$Condition=="C04"], na.rm = FALSE))`)
+
+
+# PART I Analysis: Linear model_1 (with throughput as independent variable)
+```{r}
+m1 <- lm( TP.bps. ~ Condition, data = Participants)
+summary(m1)
+anova(m1)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m1, col=as.factor(Participants$Condition))
+```
+
+# adding a model for displaying effects of outlier removal
+
+Based on the large deviation at the "tail" of the Q-Q plot we decided to try eliminating the "suspiciously low" throughput outliers and based model_1a on this. This was purely for experimental purposes to see if the difference was such that it would be worth sacrificing some questionable data in the interest of revealing a more realistic distribution.
+
+```{r}
+m1a <- lm( TP.bps. ~ Condition, data = Participants[Participants$TP.bps.>=0.7,])
+summary(m1a)
+anova(m1a)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m1a, col=as.factor(Participants$Condition))
+
+```
+
+By comparing the models 1 and 1a we can see that removal provides an improved fit (Normal Q-Q). We found that it does in fact provide a higher R-squared while maintaining the same level of significance. 
+R-squared 0.33 -> 0.43
+F-stat 71.2 -> 101.3
+DF reduced from 428 -> 397
+p-value maintained at 2.2e-16 
+
+
+```{r}
+m1$coefficients
+```
+
+# Plotting the results of the linear model_1, and the experimental model_1a (lower outliers removed)
+
+```{r} 
+str(Participants)
+Participants$Condition<-as.factor(as.character(Participants$Condition))
+
+#model_1
+coeffs_df <- tibble(
+  Coeff_id = paste0("b", 0:(length(m1$coefficients)-1)),
+  Coeff = m1$coefficients,
+  Plot_x = levels(Participants$Condition),
+  Plot_y = c(m1$coefficients[1], m1$coefficients[1], m1$coefficients[1], m1$coefficients[1]),
+  Plot_yend = c(m1$coefficients[1], 
+            m1$coefficients[1] + m1$coefficients[2], 
+            m1$coefficients[1] + m1$coefficients[3],
+            m1$coefficients[1] + m1$coefficients[4])
+)
+
+Participants %>% 
+  ggplot(aes(x = Condition, y = TP.bps.)) +
+  geom_beeswarm(alpha = 0.3) +
+  geom_point(data = coeffs_df, 
+             aes(x = Plot_x, y = Plot_yend), 
+             color = "red", shape = 18, size = 3) +
+  geom_segment(data = coeffs_df, 
+               aes(x = Plot_x, xend = Plot_x, y = Plot_y, yend = Plot_yend), 
+               color = "red",
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  geom_hline(yintercept = m1$coefficients[1], color = "red", linetype = "dashed") +
+  ylab("Throughput (bps)") +
+  scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+# model_1a
+coeffs1a_df <- tibble(
+  Coeff_id = paste0("b", 0:(length(m1a$coefficients)-1)),
+  Coeff = m1a$coefficients,
+  Plot_x = levels(Participants$Condition),
+  Plot_y = c(m1a$coefficients[1], m1a$coefficients[1], m1a$coefficients[1], m1a$coefficients[1]),
+  Plot_yend = c(m1a$coefficients[1], 
+            m1a$coefficients[1] + m1a$coefficients[2], 
+            m1a$coefficients[1] + m1a$coefficients[3],
+            m1a$coefficients[1] + m1a$coefficients[4])
+)
+
+Participants[Participants$TP.bps.>=0.7,] %>% 
+  ggplot(aes(x = Condition, y = TP.bps.)) +
+  geom_beeswarm(alpha = 0.3) +
+  geom_point(data = coeffs1a_df, 
+             aes(x = Plot_x, y = Plot_yend), 
+             color = "red", shape = 18, size = 3) +
+  geom_segment(data = coeffs1a_df, 
+               aes(x = Plot_x, xend = Plot_x, y = Plot_y, yend = Plot_yend), 
+               color = "red",
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  geom_hline(yintercept = m1a$coefficients[1], color = "red", linetype = "dashed") +
+  ylab("Throughput (bps)") +
+  scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+  
+
+```
+
+In the above model the baseline condition (C01: laptop) is being treated as the y-intercept, since the conditions are treated as levels. The residuals are the coefficient (offset) for each condition from the baseline condition. Two-handed touch is closest (has the smallest residual) to the baseline condition. 
+
+
+# Hypotheses and planned contrast regarding throughput
+* \\(H_1\\): Mobile phone based "remote mouses" have a higher throughput than laptop based touchpads. (C02+C03+C04)-C01=0
+* \\(H_3.2\\): Mobile phone based "remote mouses" have a higher throughput when using two-handed pointing method compared to one-handed pointing method. C03-C02=0
+
+
+```{r}
+  m1.contrast <- glht(m1, linfct = mcp(Condition =
+  c("(C02+C03+C04)-C01=0",
+    "C03-C02=0"
+    )))
+
+  m1.contrast %>%
+  confint() %>%
+  tidy() %>%
+  ggplot(aes(x = paste(lhs, "==", rhs))) +
+  ggtitle("Linear Model 1") +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_point(aes(y = estimate)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) +
+  expand_limits(y = 0) +
+  coord_flip() +
+  xlab("Hypothesis") +
+  ylab("Estimate of the difference") 
+  summary(m1.contrast)
+  
+    m1a.contrast <- glht(m1a, linfct = mcp(Condition =
+  c("(C02+C03+C04)-C01=0",
+    "C03-C02=0"
+    )))
+
+  m1a.contrast %>%
+  confint() %>%
+  tidy() %>%
+  ggplot(aes(x = paste(lhs, "==", rhs))) +
+  ggtitle("Linear Model 1a (w/o outliers)") +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_point(aes(y = estimate)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) +
+  expand_limits(y = 0) +
+  coord_flip() +
+  xlab("Hypothesis") +
+  ylab("Estimate of the difference") 
+  summary(m1a.contrast)
+```
+
+**Interpretation:** Recall: the nearer to the zero, the more valid is the hypothesis 
+H_1) The estimate of the difference between mobile phone based "remote mouses" and laptop based touchpad is roughly -2.68, what means the hypothesis should not be accepted, since throughput with laptop based touchpad is substantially larger compared to all mobile phone based conditions, the P-value is significant (<1e-10), and the standard error is low (0.19) relative to the estimate. 
+REJECTED
+
+H_3.2) The estimate of the difference between two-handed pointing method and one-handed pointing method on the mobile phone is close to zero (+0.22). The throughput in two-handed method is only minimally larger, and yet it is significant (as the standard error is so low at 0.08, and the P value is < 0.01). Therefore, even such a small difference we accept as support of the hypothesis. 
+ACCEPTED
+
+With the added model_1a, we see that both hypotheses have estimates closer to 0. However, for the purposes of this study we will use the results from the full test group (all sequences from all participants - "Model 1"), as that was mentioned in our protocols as a goal and the results (at least for TP) are similar. 
+
+
+
+#Part II Analysis: 
+
+## Automatic model comparison: dependence of the throughput from 7 accuracy measures
+```{r}
+lm_all <- lm(
+  TP.bps. ~  
+  Condition + 
+  Block + 
+  MT.ms. +         # Speed represented by movement time
+  TRE +            # 1. Target re-entry
+  TAC +            # 2. Task axis crossing
+  MDC +            # 3. Movement direction change
+  ODC +            # 4. Orthogonal direction change
+  MV +             # 5. Movement variability
+  ME +             # 6. Movement error
+  MO,              # 7. Movement offset
+        
+  data = Participants   
+  )
+
+
+step_backward_result <- 
+  MASS::stepAIC(lm_all, 
+    direction = "backward", 
+    trace = TRUE           # this shows the fit trace so we can track AIC (optional)
+    )
+
+step_backward_result$anova
+anova_result <- anova(step_backward_result)
+print(anova_result)
+```
+
+
+**Interpretation:** Throughput is an accepted measure now endorsed in an ISO standard (MacKenzie et al (2001), p. 14). It has two core components: (a) speed, represented by movement time and (b) accuracy, represented by 7 accuracy measures, mentioned above. As well as the Condition and Block. Results from model comparison still retain MT(movement time) as one of the core components, and emphasize 4 from 7 accuracy measures:   `TRE` (Target re-entry), `MDC`(Movement direction change), `ODC`(Orthogonal direction change) and `ME`(Movement error), which have the greatest impact on the linear model and result in the lowest AIC score based on our experiment data. Therefore in the further analysis we will concentrate on this 3 accuracy measures to explain the differences between the conditions.
+
+
+#Multiple linear regression based on the AIC results
+```{r}
+#  ensure data type for modelling
+Participants$Condition <- as.factor(Participants$Condition)
+
+m1b <- lm(TP.bps. ~ Condition + Block + MT.ms. + TRE + MDC + ODC + ME, data= Participants)
+#library(lme4)
+#m1b <- lm(MT.ms. ~ Condition + Block + TP.bps. + TRE + MDC + ODC + ME, data= Participants) 
+#m1b.red <- lm(MT.ms. ~Condition + TP.bps. + TRE + MDC + ODC + ME, data= Participants) 
+#anova(m1b, m1b.red, test="LRT")
+summary(m1b)
+anova(m1b)
+coefficients(m1b)
+confint(m1b, level = 0.95)
+
+```
+
+```{r}
+layout(matrix(c(1,2,3,4),2,2)) 
+plot (m1b)
+```
+
+The multiple linear regression based on the AIC results provides an increased R-squared of 0.53. This is an improvement over both the "outlier-pruned" Model 1a (R-squared = 0.43) and the original linear Model 1 (R-squared 0.33). And unlike the outlier removal method, this preserves all data points. 
+However, in the end we chose to use Model 1 so as to not risk overcomplicating the model.
+
+
+# PART III Analysis: Linear model_2 (with MDC as independent variable)
+
+Based on exploratory analysis we saw that four of the accuracy measures (MDC, ODC, ME, and error %) demonstrated similar scaled results for each condition, with ME and error % flipping on Sway and one-handed conditions. We then looked at model testing for each. Based on model testing we found that MDC seemed to provide the best model fit of MDC, ODC, ME, and error %. For ease of reading we have left the initial R testing for each and the full examination of our chosen MDC.
+
+#Error Percentage
+```{r}
+m3 <- lm( ER... ~ Condition, data = Participants)
+summary(m3)
+anova(m3)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m3, col=as.factor(Participants$Condition))
+```
+
+Normal Q-Q demonstrates how difficult it is to use the click error percentage as a metric for judging accuracy. The levels are not sufficiently numerous, and degrade the quality of a model. R-squared is just 0.06. 
+
+
+#ME
+```{r}
+m4 <- lm( ME ~ Condition, data = Participants)
+summary(m4)
+anova(m4)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m4, col=as.factor(Participants$Condition))
+```
+
+ME produces an R-squared of 0.17.
+
+#ODC
+```{r}
+m5 <- lm( ODC ~ Condition, data = Participants)
+summary(m5)
+anova(m5)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m5, col=as.factor(Participants$Condition))
+```
+
+ODC produces an R-squared of 0.28.
+
+#MDC - Mean Direction Changes
+
+```{r}
+m2 <- lm( MDC ~ Condition, data = Participants)
+summary(m2)
+anova(m2)
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(m2, col=as.factor(Participants$Condition))
+
+```
+
+With MDC the R-squared is 0.35, the highest of the accuracy measures. Visually the normal Q-Q shows the "best fit" for residuals with an MDC linear model when compared with other accuracy measures. Therefore we are proceeding with MDC. 
+
+
+```{r}
+m2$coefficients
+```
+
+# Plotting the results of the linear model_2
+
+```{r} 
+str(Participants)
+Participants$Condition<-as.factor(as.character(Participants$Condition))
+
+#model_1
+coeffs2_df <- tibble(
+  Coeff_id = paste0("b", 0:(length(m1$coefficients)-1)),
+  Coeff = m2$coefficients,
+  Plot_x = levels(Participants$Condition),
+  Plot_y = c(m2$coefficients[1], m2$coefficients[1], m2$coefficients[1], m2$coefficients[1]),
+  Plot_yend = c(m2$coefficients[1], 
+            m2$coefficients[1] + m2$coefficients[2], 
+            m2$coefficients[1] + m2$coefficients[3],
+            m2$coefficients[1] + m2$coefficients[4])
+)
+
+Participants %>% 
+  ggplot(aes(x = Condition, y = MDC)) +
+  geom_beeswarm(alpha = 0.3) +
+  geom_point(data = coeffs2_df, 
+             aes(x = Plot_x, y = Plot_yend), 
+             color = "red", shape = 18, size = 3) +
+  geom_segment(data = coeffs2_df, 
+               aes(x = Plot_x, xend = Plot_x, y = Plot_y, yend = Plot_yend), 
+               color = "red",
+               arrow = arrow(length = unit(0.03, "npc"))) +
+  geom_hline(yintercept = m2$coefficients[1], color = "red", linetype = "dashed") +
+  ylab("Mean Direction Changes (error)") +
+  scale_x_discrete(labels = c("Laptop", "1-hand touch", "2-hand touch", "Sway"))
+
+```
+
+In the above model the baseline condition (C01: laptop) is being treated as the y-intercept, since the conditions are treated as levels. The residuals are the coefficient (offset) for each condition from the baseline condition. For mean direction changes the two-handed touch is closest (has the smallest residual) to the baseline condition. 
+
+
+# Hypotheses and planned contrast regarding accuracy
+* \\(H_2\\): Mobile phone based "remote mouses" have a higher accuracy when using touchpad method compared to sway method. (C02+C03)-C04=0
+* \\(H_3.1\\): Mobile phone based "remote mouses" have a higher accuracy when using two-handed pointing method compared to one-handed pointing method. C03-C02=0
+
+
+```{r}
+  m2.contrast <- glht(m2, linfct = mcp(Condition =
+  c("(C02+C03)-C04=0",
+    "C03-C02=0"
+    )))
+
+  m2.contrast %>%
+  confint() %>%
+  tidy() %>%
+  ggplot(aes(x = paste(lhs, "==", rhs))) +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_point(aes(y = estimate)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) +
+  expand_limits(y = 0) +
+  coord_flip() +
+  xlab("Hypothesis") +
+  ylab("Estimate of the difference") 
+  summary(m2.contrast)
+```
+
+
+**Interpretation:** 
+
+H_2) The estimate of the difference in accuracy between mobile phone touchpad methods and the sway method is 0.08, with SE = 0.115. This is not significant, so we therefore cannot accept that, when combined, one-handed and two-handed are significantly more accurate than sway. 
+Although taken on its own the two-handed does appear to be more accurate than sway, this was not part of the hypothesis.
+NOT ACCEPTED
+
+H_3.1) The estimate of the difference in accuracy between the two-handed pointing method and one-handed pointing method does show very high significance, with an estimate of -0.71, SE = 0.08, and P < 1e-10. Based on this we strongly accept the hypothesis. 
+STRONGLY ACCEPTED
+
+
+
+# Part IV Analysis - Block Effect
+
+In exploratory analysis we noticed what appeared to be Block Effect to varying degrees for the conditions. Therefore we have built linear models (using AIC) to explore the effect of the presence (or lack of) the block variable. 
+
+## Automatic model comparison: movement time
+
+```{r}
+lm_all_block <- lm(
+  MT.ms. ~  
+  Condition + 
+  Block + 
+  TP.bps. +         # Throughput
+  TRE +            # 1. Target re-entry
+  TAC +            # 2. Task axis crossing
+  MDC +            # 3. Movement direction change
+  ODC +            # 4. Orthogonal direction change
+  MV +             # 5. Movement variability
+  ME +             # 6. Movement error
+  MO,              # 7. Movement offset
+        
+  data = Participants   
+  )
+
+
+step_backward_result_block <- 
+  MASS::stepAIC(lm_all_block, 
+    direction = "backward", 
+    trace = TRUE           # this shows the fit trace so we can track AIC (optional)
+    )
+
+step_backward_result_block$anova
+anova_result_block <- anova(step_backward_result_block)
+print(anova_result_block)
+```
+
+It should be noted that this model is different from the AIC model built for throughput. This means that MT and TP are affected differently, or that the presence of the TP acting on MT is different from MT acting on TP. 
+
+#Multiple linear regression based on the AIC results (Block - MT)
+
+
+```{r}
+#  ensure data type for modelling
+Participants$Condition <- as.factor(Participants$Condition)
+
+library(lme4)
+m_mt_b <- lm(MT.ms. ~ Condition + Block + TP.bps. + TRE + MDC + ODC + ME, data= Participants) 
+m_mt_b.red <- lm(MT.ms. ~ Condition + TP.bps. + TRE + MDC + ODC + ME, data= Participants) 
+anova(m_mt_b, m_mt_b.red, test="LRT")
+
+```
+
+From this we see that there does appear to be a block effect on on MT, with p < 0.056. 
+
+
+#Multiple linear regression based on the AIC results (Block - Throughput)
+
+We already have the AIC for throughput from earlier, so we just plug it in and compare. 
+
+```{r}
+Participants$Condition <- as.factor(Participants$Condition)
+
+m_tb_b <- lm(TP.bps. ~ Condition + Block + MT.ms. + TRE + MDC + ODC + ME, data= Participants)
+m_tb_b.red <- lm(TP.bps. ~ Condition + MT.ms. + TRE + MDC + ODC + ME, data= Participants)
+anova(m_tb_b, m_tb_b.red, test="LRT")
+
+```
+
+Here we see that -- again -- there appears to be a block effect, with p < 0.084. 
+
+We can even try improving this further by removing presumed outliers that are impacting the results. 
+
+```{r}
+Participants$Condition <- as.factor(Participants$Condition)
+
+m_tb_b <- lm(TP.bps. ~ Condition + Block + MT.ms. + TRE + MDC + ODC + ME, data= Participants[Participants$TP.bps.>0.55,])
+m_tb_b.red <- lm(TP.bps. ~ Condition + MT.ms. + TRE + MDC + ODC + ME, data= Participants[Participants$TP.bps.>0.55,])
+anova(m_tb_b, m_tb_b.red, test="LRT")
+
+```
+
+Removing the presumed erroneous outliers decreases the p further, to 0.03. The SoS converges slightly closer to 0. 
+
+## Automatic model comparison: accuracy (MDC) 
+
+```{r}
+lm_all_block2 <- lm(
+  MDC ~  
+  Condition + 
+  Block + 
+  TP.bps. +         # Throughput
+  MT.ms. +         # time
+  TRE +            # 1. Target re-entry
+  TAC +            # 2. Task axis crossing
+  ODC +            # 4. Orthogonal direction change
+  MV +             # 5. Movement variability
+  ME +             # 6. Movement error
+  MO,              # 7. Movement offset
+        
+  data = Participants   
+  )
+
+
+step_backward_result_block2 <- 
+  MASS::stepAIC(lm_all_block2, 
+    direction = "backward", 
+    trace = TRUE           # this shows the fit trace so we can track AIC (optional)
+    )
+
+step_backward_result_block2$anova
+anova_result_block2 <- anova(step_backward_result_block2)
+print(anova_result_block2)
+```
+
+In the AIC calculation for accuracy (MDC), we see that Block has been eliminated in the final step. Given the change in MDC due to Block (2.21 -> 2.19), we agree with the AIC that block does not appear to have had an effect on the accuracy measure. 
+
+
